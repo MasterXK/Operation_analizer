@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "operation-analizer"
+version = "0.1.0"
+description = ""
+authors = ["vavil <vavilon164@yandex.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+
+[tool.poetry.group.dev.dependencies]
+logging = "^0.4.9.6"
+pandas = "^2.1.3"
+openpyxl = "^3.1.2"
+requests = "^2.31.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
