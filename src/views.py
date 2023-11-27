@@ -6,16 +6,6 @@ import utils as ut
 from data import PATH_DATA
 
 
-def filter_by_state(operations: list[dict], state: str = "OK") -> list[dict]:
-    """
-    Функция фильтрует список операций по статусу
-    :param operations: список операций
-    :param state: статус для фильтра
-    :return: отфильтрованный список операций
-    """
-    return [operation for operation in operations if operation["Статус"] == state]
-
-
 def greetings() -> str:
     time_now = datetime.now()
 
@@ -35,11 +25,11 @@ def greetings() -> str:
 
 
 def get_cards_info(transactions: list[dict]) -> dict:
-    sorted_transactions = filter_by_state(transactions)
+    filtered_transactions = ut.filter_by_state(transactions)
 
     cards = {}
 
-    for transaction in sorted_transactions:
+    for transaction in filtered_transactions:
         try:
             number = transaction['Номер карты'][1:]
             cards.setdefault(number, {
@@ -64,17 +54,22 @@ def get_cards_info(transactions: list[dict]) -> dict:
 
 
 def get_top_transactions(transactions: list[dict]) -> dict:
-    sorted_transactions = filter_by_state(transactions)
-    data = pd.DataFrame(sorted_transactions)
+    filtered_transactions = ut.filter_by_state(transactions)
 
-    cards_grouped = data.groupby('Сумма платежа')
-    cards_total_sum = cards_grouped['Сумма операции'].sum()
-    cards_cashback_sum = cards_grouped['Кэшбэк'].sum()
+    for transaction in filtered_transactions:
+        if transaction['Валюта операции'] != 'RUB':
+            transaction['Сумма операции'] = ut.get_transaction_sum(transaction)
 
-    return {"cards": [{"last_digits": number[1:],
-                       "total_spent": cards_total_sum[number],
-                       "cashback": cards_cashback_sum[number]}
-                      for number in cards_total_sum.index]}
+    data = pd.DataFrame(filtered_transactions)
+
+    sort_by_sum = data.sort_values(by='Сумма операции')
+    top_transactions = sort_by_sum.head(5)
+
+    return {"top_transactions": [{"date": transaction['Дата операции'],
+                                  "amount": transaction['Сумма операции'],
+                                  "category": transaction['Категория'],
+                                  "description": transaction['Описание']}
+                                 for _, transaction in top_transactions.iterrows()]}
 
 
 def get_info(date: str) -> dict[str, str | list[dict]]:

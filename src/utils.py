@@ -16,6 +16,16 @@ logging.basicConfig(
     level=2)
 
 
+def filter_by_state(transactions: list[dict], state: str = "OK") -> list[dict]:
+    """
+    Функция фильтрует список операций по статусу
+    :param transactions: список операций
+    :param state: статус для фильтра
+    :return: отфильтрованный список операций
+    """
+    return [transaction for transaction in transactions if transaction["Статус"] == state]
+
+
 def read_json(json_path: str | os.PathLike) -> list[dict] | dict:
     """
     Функция считывает содержимое json-файла
