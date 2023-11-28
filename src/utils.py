@@ -1,19 +1,24 @@
+import json
 import logging
 import os
-import json
+from datetime import datetime
+
 import pandas as pd
 import requests
 from dotenv import load_dotenv
+
 from data import PATH_DATA
 
 load_dotenv()
 
-
 logging.basicConfig(
-    filename=os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'logs.log'),
-    filemode='w',
+    filename=os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "data", "logs.log"
+    ),
+    filemode="w",
     format="%(asctime)s %(filename)s %(levelname)s: %(message)s",
-    level=2)
+    level=2,
+)
 
 
 def filter_by_state(transactions: list[dict], state: str = "OK") -> list[dict]:
@@ -23,7 +28,32 @@ def filter_by_state(transactions: list[dict], state: str = "OK") -> list[dict]:
     :param state: статус для фильтра
     :return: отфильтрованный список операций
     """
-    return [transaction for transaction in transactions if transaction["Статус"] == state]
+    return [
+        transaction for transaction in transactions if transaction["Статус"] == state
+    ]
+
+
+def filter_by_date(transactions: list[dict], date_format: str,
+                   start_date: str | datetime = None, end_date: str | datetime = None,
+                   date: str | datetime = datetime.now().date()) -> list[dict]:
+    if start_date and end_date:
+        if type(start_date) is str:
+            start_date = datetime.strptime(start_date, date_format)
+
+        if type(end_date) is str:
+            end_date = datetime.strptime(end_date, date_format)
+
+        return [
+            transaction for transaction in transactions
+            if start_date < datetime.strptime(transaction["Дата операции"], date_format) < end_date
+        ]
+    else:
+        if type(date) is str:
+            date = datetime.strptime(date, date_format).date()
+        return [
+            transaction for transaction in transactions
+            if datetime.strptime(transaction["Дата операции"], date_format).date() == date
+        ]
 
 
 def read_json(json_path: str | os.PathLike) -> list[dict] | dict:
@@ -75,30 +105,68 @@ def read_table(file_path: str | os.PathLike) -> list[dict] | dict | None:
         logging.error("Неизвестное расширение файла")
         return None
 
-    return_data: list[dict] | dict = json.loads(data.to_json(orient="records", force_ascii=False))
+    return_data: list[dict] | dict = json.loads(
+        data.to_json(orient="records", force_ascii=False)
+    )
 
     return return_data
 
 
-def get_actual_rate() -> None:
+def get_actual_rates() -> None:
+    """
+    Функция запрашивает актуальные курсы валют и сохраняет их в json-файл
+    :return: None
+    """
     key = os.getenv("API_EXC")
 
     try:
-        response = requests.get(
-            f"https://v6.exchangerate-api.com/v6/{key}/latest/RUB"
-        )
+        response = requests.get(f"https://v6.exchangerate-api.com/v6/{key}/latest/RUB")
         rates_data = response.json()
-        logging.debug('Данные курса получены.')
+        logging.debug("Данные по курсам получены.")
 
     except requests.exceptions.RequestException as e:
-        logging.error(f'Не удалось получить данные: {e}', exc_info=True)
+        logging.error(f"Не удалось получить данные: {e}", exc_info=True)
         return None
 
-    with open(os.path.join(PATH_DATA, 'rates_data.json'), 'w') as rates:
-        rates.write(json.dumps(rates_data))
-        logging.debug(f'Данные записаны: {rates.name, rates.mode, rates.encoding}')
+    with open(os.path.join(PATH_DATA, "currency_rates.json"), "w") as rates:
+        json.dump(rates_data, rates)
+        logging.debug(f"Данные записаны: {rates.name, rates.mode, rates.encoding}")
 
     return None
+
+
+def get_actual_stock_price(symbol: str) -> None:
+    """
+    Функция
+    :param symbol:
+    :return:
+    """
+    key = os.getenv("API_AVS")
+
+    try:
+        response = requests.get(
+            f"""https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={key}"""
+        )
+        rates = read_json(os.path.join(PATH_DATA, "currency_rates.json"))
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Не удалось получить данные: {e}", exc_info=True)
+        return None
+
+    else:
+        stock_data = response.json()
+        logging.debug(f"Данные акций {symbol} получены")
+
+    try:
+        result = round(
+            float(stock_data["Global Quote"]["05. price"])
+            / rates["conversion_rates"]["USD"],
+            1,
+        )
+    except KeyError:
+        result = 'Сервис недоступен'
+
+    return result
 
 
 def get_transaction_sum(transaction: dict) -> float | None:
@@ -110,17 +178,19 @@ def get_transaction_sum(transaction: dict) -> float | None:
     currency = transaction["Валюта операции"]
 
     try:
-        data: dict = read_json(os.path.join(PATH_DATA, 'rates_data.json'))
+        rates: dict = read_json(os.path.join(PATH_DATA, "currency_rates.json"))
 
     except FileNotFoundError:
-        logging.error('Файл rates_data.json не найден.')
+        logging.error("Файл rates_data.json не найден.")
         return None
 
     if currency == "RUB":
-        logging.debug('Транзакция в рублях, вывожу сумму...')
+        logging.debug("Транзакция в рублях, вывожу сумму...")
         return float(transaction["Сумма операции"])
 
     else:
-        logging.debug(f'Транзакция в валюте {currency}, запрашиваю курс к рублю...')
+        logging.debug(f"Транзакция в валюте {currency}, запрашиваю курс к рублю...")
         return round(
-            data["conversion_rates"][currency] / float(transaction["Сумма операции"]), 1)
+            float(transaction["Сумма операции"] / rates["conversion_rates"][currency]),
+            1,
+        )
