@@ -31,47 +31,36 @@ def greetings() -> str:
     return greeting
 
 
-def get_cards_info(transactions: list[dict]) -> list:
+def get_cards_stat(transactions: list[dict]) -> list:
     """
     Функция сортирует транзакции по номерам карт и для каждой карты
     определяет сумму всех операций и сумму кэшбэка
     :param transactions: список транзакций
     :return: список формата: [{"last_digits": "номер карты",
                                 "total_spent": "Сумма",
-                                "cashback": "Кэшбэк"},]
+                                "cashback": "Кэшбэк"}]
     """
     filtered_transactions = ut.filter_by_state(transactions)
 
     data = pd.DataFrame(filtered_transactions)
+    data["Номер карты"] = data["Номер карты"].apply(lambda x: 'Без номера' if x is None else x)
 
-    cards_groped = data.groupby("Номер карты")
+    expense_data = data[data["Сумма операции"] < 0]
 
-    cards = {}
+    sum_cur_data = expense_data.loc[:, ["Сумма операции", "Валюта операции"]]
+    expense_data.loc[:, "Сумма операции"] = sum_cur_data.apply(
+        lambda x: ut.get_transaction_sum(x) if x.iloc[1] != 'RUB' else x.iloc[0], axis=1)
 
-    for transaction in filtered_transactions:
-        try:
-            number = transaction["Номер карты"][1:]
-            cards.setdefault(number, {"spent": [], "cashbacks": []})
-            cards[number]["spent"].append(ut.get_transaction_sum(transaction))
-            cards[number]["cashbacks"].append(transaction["Бонусы (включая кэшбэк)"])
-
-        except KeyError as e:
-            logging.error(f"Ошибка: {e}", exc_info=True)
-
-        except TypeError:
-            cards.setdefault("Без номера", {"spent": [], "cashbacks": []})
-            cards["Без номера"]["spent"].append(ut.get_transaction_sum(transaction))
-            cards["Без номера"]["cashbacks"].append(transaction["Кэшбэк"])
+    card_grouped = expense_data.groupby("Номер карты")
+    card_stat = card_grouped[["Сумма операции", "Бонусы (включая кэшбэк)"]].sum()
 
     return [
         {
-            "last_digits": card,
-            "total_spent": sum(info["spent"]),
-            "cashback": sum(
-                filter(lambda x: type(x) in (int, float), info["cashbacks"])
-            ),
+            "last_digits": number,
+            "total_spent": stat["Сумма операции"],
+            "cashback": stat["Бонусы (включая кэшбэк)"],
         }
-        for card, info in cards.items()
+        for number, stat in card_stat.iterrows()
     ]
 
 
@@ -129,7 +118,12 @@ def get_user_portfolio() -> dict:
     return {"user_currencies": user_currencies, "user_stocks": user_stocks}
 
 
-def get_info(date: str | datetime) -> dict[str, str | list[dict]]:
+def make_response(date: str | datetime) -> dict[str, str | list[dict]]:
+    """
+    Функция формирует json-ответ для главной страницы на момент date-даты
+    :param date: дата
+    :return: словарь и запись в файл result.json
+    """
     if type(date) is str:
         date = datetime.strptime(date, "%d.%m.%Y %H:%M:%S")
 
@@ -142,7 +136,7 @@ def get_info(date: str | datetime) -> dict[str, str | list[dict]]:
     )
 
     greeting = greetings()
-    cards = get_cards_info(filtered_transactions)
+    cards = get_cards_stat(filtered_transactions)
     top_transactions = get_top_transactions(filtered_transactions)
     user_portfolio = get_user_portfolio()
 
