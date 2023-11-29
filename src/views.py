@@ -44,7 +44,7 @@ def get_cards_info(transactions: list[dict]) -> list:
 
     data = pd.DataFrame(filtered_transactions)
 
-    cards_groped = data.groupby('Номер карты')
+    cards_groped = data.groupby("Номер карты")
 
     cards = {}
 
@@ -92,8 +92,7 @@ def get_top_transactions(transactions: list[dict]) -> list:
 
     data = pd.DataFrame(filtered_transactions)
 
-
-    data['Сумма операции'] = data['Сумма операции'].apply(lambda x: abs(x))
+    data["Сумма операции"] = data["Сумма операции"].apply(lambda x: abs(x))
 
     sort_by_sum = data.sort_values(by="Сумма операции", ascending=False)
     top_transactions = sort_by_sum.head(5)
@@ -139,7 +138,7 @@ def get_info(date: str | datetime) -> dict[str, str | list[dict]]:
 
     data = ut.read_table(os.path.join(PATH_DATA, "operations.xls"))
     filtered_transactions = ut.filter_by_date(
-        data, start_date=start_date, end_date=end_date, date_format="%d.%m.%Y %H:%M:%S"
+        data, date=[start_date, end_date], date_format="%d.%m.%Y %H:%M:%S"
     )
 
     greeting = greetings()
@@ -147,13 +146,15 @@ def get_info(date: str | datetime) -> dict[str, str | list[dict]]:
     top_transactions = get_top_transactions(filtered_transactions)
     user_portfolio = get_user_portfolio()
 
-    result = {"greeting": greeting,
-              "cards": cards,
-              "top_transactions": top_transactions,
-              "currency_rates": user_portfolio["user_currencies"],
-              "stock_prices": user_portfolio["user_stocks"]}
+    result = {
+        "greeting": greeting,
+        "cards": cards,
+        "top_transactions": top_transactions,
+        "currency_rates": user_portfolio["user_currencies"],
+        "stock_prices": user_portfolio["user_stocks"],
+    }
 
-    with open(os.path.join(PATH_DATA, 'result.json'), 'w', encoding='UTF-8') as f:
+    with open(os.path.join(PATH_DATA, "result.json"), "w", encoding="UTF-8") as f:
         json.dump(result, f, ensure_ascii=False)
 
     return result

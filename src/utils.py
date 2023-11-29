@@ -33,8 +33,11 @@ def filter_by_state(transactions: list[dict], state: str = "OK") -> list[dict]:
     ]
 
 
-def filter_by_date(transactions: list[dict], date_format: str,
-                   date: str | datetime | Iterable = datetime.now().date()) -> list[dict]:
+def filter_by_date(
+        transactions: list[dict],
+        date_format: str,
+        date: str | datetime | Iterable = datetime.now().date(),
+) -> list[dict]:
     """
     Функция фильтрует список транзакций по дате.
     Если передана одна дата, то возвращает список транзакций в зту дату.
@@ -50,26 +53,36 @@ def filter_by_date(transactions: list[dict], date_format: str,
         end_date = next(date_iter)
 
         if type(start_date) is str:
+            if type(end_date) is str:
+                end_date = datetime.strptime(end_date, date_format)
             start_date = datetime.strptime(start_date, date_format)
 
-        if type(end_date) is str:
-            end_date = datetime.strptime(end_date, date_format)
-
         return [
-            transaction for transaction in transactions
-            if start_date < datetime.strptime(transaction["Дата операции"], date_format) < end_date
+            transaction
+            for transaction in transactions
+            if start_date <= datetime.strptime(transaction["Дата операции"], date_format) <= end_date
         ]
 
     elif type(date) is str:
         date = datetime.strptime(date, date_format).date()
         return [
-            transaction for transaction in transactions
+            transaction
+            for transaction in transactions
             if datetime.strptime(transaction["Дата операции"], date_format).date() == date
         ]
 
+    elif type(date) is datetime:
+        return [
+            transaction
+            for transaction in transactions
+            if datetime.strptime(transaction["Дата операции"], date_format).date() == date.date()
+        ]
+
     else:
-        logging.error('Ошибка: неверный тип date. Требуется str или datetime, либо Iterable')
-        raise TypeError('Неверный тип date. Требуется str или datetime, либо Iterable')
+        logging.error(
+            "Ошибка: неверный тип date. Требуется str или datetime, либо Iterable"
+        )
+        raise TypeError("Неверный тип date. Требуется str или datetime, либо Iterable")
 
 
 def read_json(json_path: str | os.PathLike) -> list[dict] | dict:
@@ -112,7 +125,7 @@ def read_table(file_path: str | os.PathLike) -> list[dict] | dict | None:
     _, ext = os.path.splitext(file_path)
 
     if ext == ".csv":
-        data = pd.read_csv(file_path, encoding="UTF-8", sep=";")
+        data = pd.read_csv(file_path, encoding="UTF-8", sep=";").replace({pd.NA: None})
 
     elif ext in [".xls", ".xlsx"]:
         data = pd.read_excel(file_path)
@@ -153,17 +166,16 @@ def get_actual_rates() -> None:
 
 def get_actual_stock_price(symbol: str) -> None:
     """
-    Функция
-    :param symbol:
-    :return:
+    Функция получает актуальную цену акции. Сервис доступен на 25 обращений в сутки
+    :param symbol: код акции
+    :return: цена акции
     """
     key = os.getenv("API_AVS")
 
     try:
         response = requests.get(
-            f"""https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={key}"""
+            f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={key}"
         )
-        rates = read_json(os.path.join(PATH_DATA, "currency_rates.json"))
 
     except requests.exceptions.RequestException as e:
         logging.error(f"Не удалось получить данные: {e}", exc_info=True)
@@ -174,13 +186,18 @@ def get_actual_stock_price(symbol: str) -> None:
         logging.debug(f"Данные акций {symbol} получены")
 
     try:
-        result = round(
-            float(stock_data["Global Quote"]["05. price"])
-            / rates["conversion_rates"]["USD"],
-            1,
-        )
+        rates = read_json(os.path.join(PATH_DATA, "currency_rates.json"))
+        stock_price = float(stock_data["Global Quote"]["05. price"])
+
     except KeyError:
-        result = 'Сервис недоступен'
+        result = "Сервис недоступен"
+
+    except FileNotFoundError as e:
+        logging.error(f"Нет данных по курсам валют. {e}", exc_info=True)
+        raise e
+
+    else:
+        result = round(stock_price / rates["conversion_rates"]["USD"], 1)
 
     return result
 
@@ -196,9 +213,9 @@ def get_transaction_sum(transaction: dict) -> float | None:
     try:
         rates: dict = read_json(os.path.join(PATH_DATA, "currency_rates.json"))
 
-    except FileNotFoundError:
-        logging.error("Файл rates_data.json не найден.")
-        return None
+    except FileNotFoundError as e:
+        logging.error(f"Нет данных по курсам валют. {e}", exc_info=True)
+        raise e
 
     if currency == "RUB":
         logging.debug("Транзакция в рублях, вывожу сумму...")
@@ -207,6 +224,6 @@ def get_transaction_sum(transaction: dict) -> float | None:
     else:
         logging.debug(f"Транзакция в валюте {currency}, запрашиваю курс к рублю...")
         return round(
-            float(transaction["Сумма операции"] / rates["conversion_rates"][currency]),
+            float(transaction["Сумма операции"]) / float(rates["conversion_rates"][currency]),
             1,
         )
