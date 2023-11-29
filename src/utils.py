@@ -6,7 +6,7 @@ from datetime import datetime
 import pandas as pd
 import requests
 from dotenv import load_dotenv
-
+from typing import Iterable
 from data import PATH_DATA
 
 load_dotenv()
@@ -34,9 +34,21 @@ def filter_by_state(transactions: list[dict], state: str = "OK") -> list[dict]:
 
 
 def filter_by_date(transactions: list[dict], date_format: str,
-                   start_date: str | datetime = None, end_date: str | datetime = None,
-                   date: str | datetime = datetime.now().date()) -> list[dict]:
-    if start_date and end_date:
+                   date: str | datetime | Iterable = datetime.now().date()) -> list[dict]:
+    """
+    Функция фильтрует список транзакций по дате.
+    Если передана одна дата, то возвращает список транзакций в зту дату.
+    Если передан итерируемый date, то возвращает транзакции в период с "первый элемент date" по "второй элемент date"
+    :param transactions: список транзакций
+    :param date_format: формат даты
+    :param date: дата(даты)
+    :return: отфильтрованный список
+    """
+    if not type(date) is str and isinstance(date, Iterable):
+        date_iter = iter(date)
+        start_date = next(date_iter)
+        end_date = next(date_iter)
+
         if type(start_date) is str:
             start_date = datetime.strptime(start_date, date_format)
 
@@ -47,13 +59,17 @@ def filter_by_date(transactions: list[dict], date_format: str,
             transaction for transaction in transactions
             if start_date < datetime.strptime(transaction["Дата операции"], date_format) < end_date
         ]
-    else:
-        if type(date) is str:
-            date = datetime.strptime(date, date_format).date()
+
+    elif type(date) is str:
+        date = datetime.strptime(date, date_format).date()
         return [
             transaction for transaction in transactions
             if datetime.strptime(transaction["Дата операции"], date_format).date() == date
         ]
+
+    else:
+        logging.error('Ошибка: неверный тип date. Требуется str или datetime, либо Iterable')
+        raise TypeError('Неверный тип date. Требуется str или datetime, либо Iterable')
 
 
 def read_json(json_path: str | os.PathLike) -> list[dict] | dict:
