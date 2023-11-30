@@ -13,28 +13,17 @@ from src.utils import (
     read_json,
 )
 
+from tests import PATH_TESTS
 from data import PATH_DATA
 
 
 @pytest.fixture
-def transactions() -> list[dict]:
-    return [
-        {"Дата операции": "17.09.2021 00:00:00",
-         "Валюта операции": "RUB",
-         "Сумма операции": "10"},
-        {"Дата операции": "17.09.2021 00:00:00",
-         "Валюта операции": "USD",
-         "Сумма операции": "10"},
-        {"Дата операции": "16.09.2021 00:00:00",
-         "Валюта операции": "EUR",
-         "Сумма операции": "10"},
-        {"Дата операции": "16.09.2021 00:00:00",
-         "Валюта операции": "",
-         "Сумма операции": ""},
-        {"Дата операции": "15.09.2021 00:00:00",
-         "Валюта операции": "",
-         "Сумма операции": ""},
-    ]
+def transactions() -> pd.DataFrame:
+    df = pd.read_excel(os.path.join(PATH_TESTS, "test_data", "test_transactions.xls"),
+                       parse_dates=["Дата операции"],
+                       date_format="%d.%m.%Y %H:%M:%S"
+                       ).replace({pd.NA: None})
+    return df
 
 
 @pytest.fixture
@@ -123,7 +112,7 @@ def test_filter_by_date_err(date_format, transactions) -> None:
         filter_by_date(transactions, date=17.09, date_format=date_format)
 
 
-def test_filter_by_state(operations: list[dict[str, str | int]]) -> None:
+def test_filter_by_state(operations: pd.DataFrame) -> None:
     assert filter_by_state(operations) == operations[:2]
     assert filter_by_state(operations, state="FAILED") == operations[2:]
 
@@ -132,7 +121,7 @@ def test_filter_by_state(operations: list[dict[str, str | int]]) -> None:
     "json_path, expected_result",
     [
         (
-                os.path.join(os.path.dirname(__file__), "test_data", "test_1.json"),
+                os.path.join(PATH_TESTS, "test_data", "test_1.json"),
                 [
                     {
                         "id": 41428829,
@@ -149,7 +138,7 @@ def test_filter_by_state(operations: list[dict[str, str | int]]) -> None:
                 ],
         ),
         (
-                os.path.join(os.path.dirname(__file__), "test_data", "test_2.json"),
+                os.path.join(PATH_TESTS, "test_data", "test_2.json"),
                 {
                     "id": 441945886,
                     "state": "EXECUTED",
@@ -163,8 +152,8 @@ def test_filter_by_state(operations: list[dict[str, str | int]]) -> None:
                     "to": "Счет 64686473678894779589",
                 },
         ),
-        (os.path.join(os.path.dirname(__file__), "test_data", "test_3.json"), []),
-        (os.path.join(os.path.dirname(__file__), "test_data", "test_4.json"), []),
+        (os.path.join(PATH_TESTS, "test_data", "test_3.json"), []),
+        (os.path.join(PATH_TESTS, "test_data", "test_4.json"), []),
     ],
 )
 def test_read_json(json_path: str | os.PathLike, expected_result: list) -> None:

@@ -19,7 +19,7 @@ def main():
     # pprint(vw.make_response('30.12.2021 22:22:03'), sort_dicts=False)
     df = ut.read_table(os.path.join(os.path.dirname(PATH_DATA), "tests", "test_data", "test_transactions.xls"))
     # pprint(os.path.join(os.path.dirname(PATH_DATA), "tests", "test_data", "test_transactions.xls"))
-    pprint(vw.get_cards_stat(df))
+    pprint(svs.invest_copilka("2021-12", df, 100))
 
 
 if __name__ == "__main__":
