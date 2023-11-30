@@ -17,9 +17,9 @@ pd.set_option("display.max_colwidth", None)
 def main():
     ut.get_actual_rates()
     # pprint(vw.make_response('30.12.2021 22:22:03'), sort_dicts=False)
-    df = ut.read_table(os.path.join(PATH_DATA, "operations.xls"))
-    # pprint(df['Дата операции'])
-    print(reps.spending_by_category(df, 'Такси', '26.12.2021 22:09:56'))
+    df = ut.read_table(os.path.join(os.path.dirname(PATH_DATA), "tests", "test_data", "test_transactions.xls"))
+    # pprint(os.path.join(os.path.dirname(PATH_DATA), "tests", "test_data", "test_transactions.xls"))
+    pprint(vw.get_cards_stat(df))
 
 
 if __name__ == "__main__":

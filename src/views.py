@@ -5,7 +5,7 @@ from datetime import datetime
 
 import pandas as pd
 
-import utils as ut
+import src.utils as ut
 from data import PATH_DATA
 
 
@@ -77,10 +77,10 @@ def get_top_transactions(transactions: pd.DataFrame) -> list:
     expense_data = filtered_transactions[filtered_transactions["Сумма операции"] < 0]
 
     sum_and_cur = expense_data.loc[:, ["Сумма операции", "Валюта операции"]]
-    expense_data.loc[:, "Сумма операции"] = sum_and_cur.apply(
+    expense_data["Сумма операции"] = sum_and_cur.apply(
         lambda x: ut.get_transaction_sum(x) if x.iloc[1] != 'RUB' else x.iloc[0], axis=1)
 
-    expense_data.loc[:, "Сумма операции"] = expense_data.loc[:, "Сумма операции"].apply(lambda x: abs(x))
+    expense_data["Сумма операции"] = expense_data.loc[:, "Сумма операции"].apply(lambda x: abs(x))
 
     sort_by_sum = expense_data.sort_values(by="Сумма операции", ascending=False)
     sort_by_sum["Дата операции"] = sort_by_sum.loc[:, "Дата операции"].astype(str)
