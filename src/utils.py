@@ -21,23 +21,21 @@ logging.basicConfig(
 )
 
 
-def filter_by_state(transactions: list[dict], state: str = "OK") -> list[dict]:
+def filter_by_state(transactions: pd.DataFrame, state: str = "OK") -> pd.DataFrame:
     """
     Функция фильтрует список операций по статусу
     :param transactions: список операций
     :param state: статус для фильтра
     :return: отфильтрованный список операций
     """
-    return [
-        transaction for transaction in transactions if transaction["Статус"] == state
-    ]
+    return transactions[transactions["Статус"] == state]
 
 
 def filter_by_date(
-        transactions: list[dict],
-        date_format: str,
+        transactions: pd.DataFrame,
+        date_format: str = "%d.%m.%Y %H:%M:%S",
         date: str | datetime | Iterable = datetime.now().date(),
-) -> list[dict]:
+) -> pd.DataFrame:
     """
     Функция фильтрует список транзакций по дате.
     Если передана одна дата, то возвращает список транзакций в зту дату.
@@ -47,45 +45,44 @@ def filter_by_date(
     :param date: дата(даты)
     :return: отфильтрованный список
     """
-    if not type(date) is str and isinstance(date, Iterable):
+    if not type(date) is datetime and isinstance(date, Iterable):
         date_iter = iter(date)
         start_date = next(date_iter)
         end_date = next(date_iter)
 
-        if type(start_date) is str:
-            if type(end_date) is str:
-                end_date = datetime.strptime(end_date, date_format)
-            start_date = datetime.strptime(start_date, date_format)
+        if type(start_date) is datetime:
+            start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            start_date = datetime.strftime(start_date, date_format)
 
-        return [
-            transaction
-            for transaction in transactions
-            if start_date <= datetime.strptime(transaction["Дата операции"], date_format) <= end_date
+        if type(end_date) is datetime:
+            end_date = datetime.strftime(end_date, date_format)
+
+        result = transactions.loc[
+            (start_date <= transactions["Дата операции"]) & (transactions["Дата операции"] <= end_date)
         ]
+
+        return result
 
     elif type(date) is str:
-        date = datetime.strptime(date, date_format).date()
-        return [
-            transaction
-            for transaction in transactions
-            if datetime.strptime(transaction["Дата операции"], date_format).date() == date
-        ]
+        result = transactions.loc[transactions["Дата операции"] == date]
+
+        return result
 
     elif type(date) is datetime:
-        return [
-            transaction
-            for transaction in transactions
-            if datetime.strptime(transaction["Дата операции"], date_format).date() == date.date()
-        ]
+        date = datetime.strftime(date, date_format)
+
+        result = transactions.loc[transactions["Дата операции"] == date]
+
+        return result
 
     else:
         logging.error(
-            "Ошибка: неверный тип date. Требуется str или datetime, либо Iterable"
+            "Ошибка: неверный тип date. Требуется str или datetime, либо Iterable[str | datetime]"
         )
-        raise TypeError("Неверный тип date. Требуется str или datetime, либо Iterable")
+        raise TypeError("Неверный тип date. Требуется str или datetime, либо Iterable[str | datetime]")
 
 
-def read_json(json_path: str | os.PathLike) -> list[dict] | dict:
+def read_json(json_path: str | os.PathLike) -> pd.DataFrame | list:
     """
     Функция считывает содержимое json-файла
     :param json_path: абсолютный путь до json-а
@@ -104,15 +101,12 @@ def read_json(json_path: str | os.PathLike) -> list[dict] | dict:
         logging.error(f"Ошибка: {e}")
         return []
 
-    if type(json_content) in [list, dict]:
-        logging.debug("Данные верны")
-        return json_content
+    result = pd.DataFrame(json_content)
 
-    logging.error("Ошибка: в файле не список")
-    return []
+    return result
 
 
-def read_table(file_path: str | os.PathLike) -> list[dict] | dict | None:
+def read_table(file_path: str | os.PathLike) -> pd.DataFrame | None:
     """
     Функция считывает данные из таблиц .csv и .xlsx(.xls)
     :param file_path: путь до файла с таблицей
@@ -125,20 +119,22 @@ def read_table(file_path: str | os.PathLike) -> list[dict] | dict | None:
     _, ext = os.path.splitext(file_path)
 
     if ext == ".csv":
-        data = pd.read_csv(file_path, encoding="UTF-8", sep=";").replace({pd.NA: None})
+        data = pd.read_csv(file_path,
+                           encoding="UTF-8",
+                           sep=";",
+                           parse_dates=["Дата операции"],
+                           date_format="%d.%m.%Y %H:%M:%S",
+                           ).replace({pd.NA: None})
 
     elif ext in [".xls", ".xlsx"]:
-        data = pd.read_excel(file_path)
+        data = pd.read_excel(file_path, parse_dates=["Дата операции"], date_format="%d.%m.%Y %H:%M:%S").replace(
+            {pd.NA: None})
 
     else:
         logging.error("Неизвестное расширение файла")
-        return None
+        raise TypeError("Неизвестное расширение файла")
 
-    return_data: list[dict] | dict = json.loads(
-        data.to_json(orient="records", force_ascii=False)
-    )
-
-    return return_data
+    return data
 
 
 def get_actual_rates() -> None:
@@ -202,7 +198,7 @@ def get_actual_stock_price(symbol: str) -> None:
     return result
 
 
-def get_transaction_sum(transaction: dict) -> float | None:
+def get_transaction_sum(transaction: pd.Series) -> float | None:
     """
     Функция возвращает сумму транзакции в рублях
     :param transaction: транзакция

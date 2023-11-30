@@ -31,7 +31,7 @@ def greetings() -> str:
     return greeting
 
 
-def get_cards_stat(transactions: list[dict]) -> list:
+def get_cards_stat(transactions: pd.DataFrame) -> list:
     """
     Функция сортирует транзакции по номерам карт и для каждой карты
     определяет сумму всех операций и сумму кэшбэка
@@ -42,13 +42,12 @@ def get_cards_stat(transactions: list[dict]) -> list:
     """
     filtered_transactions = ut.filter_by_state(transactions)
 
-    data = pd.DataFrame(filtered_transactions)
-    data["Номер карты"] = data["Номер карты"].apply(lambda x: 'Без номера' if x is None else x)
+    filtered_transactions.loc[:, "Номер карты"] = filtered_transactions.loc[:, "Номер карты"].apply(lambda x: 'Без номера' if x is None else x)
 
-    expense_data = data[data["Сумма операции"] < 0]
+    expense_data = filtered_transactions[filtered_transactions["Сумма операции"] < 0]
 
-    sum_cur_data = expense_data.loc[:, ["Сумма операции", "Валюта операции"]]
-    expense_data.loc[:, "Сумма операции"] = sum_cur_data.apply(
+    sum_and_cur = expense_data.loc[:, ["Сумма операции", "Валюта операции"]]
+    expense_data.loc[:, "Сумма операции"] = sum_and_cur.apply(
         lambda x: ut.get_transaction_sum(x) if x.iloc[1] != 'RUB' else x.iloc[0], axis=1)
 
     card_grouped = expense_data.groupby("Номер карты")
@@ -64,7 +63,7 @@ def get_cards_stat(transactions: list[dict]) -> list:
     ]
 
 
-def get_top_transactions(transactions: list[dict]) -> list:
+def get_top_transactions(transactions: pd.DataFrame) -> list:
     """
     Функция возвращает список 5 самых больших операций
     :param transactions: список транзакций
@@ -75,15 +74,16 @@ def get_top_transactions(transactions: list[dict]) -> list:
     """
     filtered_transactions = ut.filter_by_state(transactions)
 
-    for transaction in filtered_transactions:
-        if transaction["Валюта операции"] != "RUB":
-            transaction["Сумма операции"] = ut.get_transaction_sum(transaction)
+    expense_data = filtered_transactions[filtered_transactions["Сумма операции"] < 0]
 
-    data = pd.DataFrame(filtered_transactions)
+    sum_and_cur = expense_data.loc[:, ["Сумма операции", "Валюта операции"]]
+    expense_data.loc[:, "Сумма операции"] = sum_and_cur.apply(
+        lambda x: ut.get_transaction_sum(x) if x.iloc[1] != 'RUB' else x.iloc[0], axis=1)
 
-    data["Сумма операции"] = data["Сумма операции"].apply(lambda x: abs(x))
+    expense_data.loc[:, "Сумма операции"] = expense_data.loc[:, "Сумма операции"].apply(lambda x: abs(x))
 
-    sort_by_sum = data.sort_values(by="Сумма операции", ascending=False)
+    sort_by_sum = expense_data.sort_values(by="Сумма операции", ascending=False)
+    sort_by_sum["Дата операции"] = sort_by_sum.loc[:, "Дата операции"].astype(str)
     top_transactions = sort_by_sum.head(5)
 
     return [
@@ -103,8 +103,8 @@ def get_user_portfolio() -> dict:
     :return: словарь формата: {"user_currencies": [{"currency": "валюта", "rate": "курс"},],
                                 "user_stocks":  [{"stock": "акция", "price": "цена"},]}
     """
-    user_data = ut.read_json(os.path.join(PATH_DATA, "user_settings.json"))
-    rates = ut.read_json(os.path.join(PATH_DATA, "currency_rates.json"))
+    user_data = json.load(open(os.path.join(PATH_DATA, "user_settings.json")))
+    rates = json.load(open(os.path.join(PATH_DATA, "currency_rates.json")))
 
     user_currencies = [
         {"currency": cur, "rate": 1 / rates["conversion_rates"][cur]}
