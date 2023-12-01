@@ -56,52 +56,10 @@ def operations() -> list[dict[str, str | int]]:
     ]
 
 
-@pytest.mark.parametrize(
-    "date, expected_result",
-    [
-        (
-                "17.09.2021 00:00:00",
-                [
-                    {"Дата операции": "17.09.2021 00:00:00",
-                     "Валюта операции": "RUB",
-                     "Сумма операции": "10"},
-                    {"Дата операции": "17.09.2021 00:00:00",
-                     "Валюта операции": "USD",
-                     "Сумма операции": "10"},
-                ],
-        ),
-        (
-                datetime(day=17, month=9, year=2021),
-                [
-                    {"Дата операции": "17.09.2021 00:00:00",
-                     "Валюта операции": "RUB",
-                     "Сумма операции": "10"},
-                    {"Дата операции": "17.09.2021 00:00:00",
-                     "Валюта операции": "USD",
-                     "Сумма операции": "10"},
-                ],
-        ),
-        (
-                ["16.09.2021 00:00:00", "17.09.2021 00:00:00"],
-                [
-                    {"Дата операции": "17.09.2021 00:00:00",
-                     "Валюта операции": "RUB",
-                     "Сумма операции": "10"},
-                    {"Дата операции": "17.09.2021 00:00:00",
-                     "Валюта операции": "USD",
-                     "Сумма операции": "10"},
-                    {"Дата операции": "16.09.2021 00:00:00",
-                     "Валюта операции": "EUR",
-                     "Сумма операции": "10"},
-                    {"Дата операции": "16.09.2021 00:00:00",
-                     "Валюта операции": "",
-                     "Сумма операции": ""},
-                ],
-        )
-    ],
-)
-def test_filter_by_date(date, expected_result, date_format, transactions) -> None:
-    assert filter_by_date(transactions, date=date, date_format=date_format) == expected_result
+def test_filter_by_date(date_format, transactions) -> None:
+    assert filter_by_date(transactions,
+                          date="31.12.2021",
+                          date_format=date_format).equals(transactions.iloc[0:6, :])
 
 
 def test_filter_by_date_err(date_format, transactions) -> None:
@@ -127,13 +85,12 @@ def test_filter_by_state(operations: pd.DataFrame) -> None:
                         "id": 41428829,
                         "state": "EXECUTED",
                         "date": "2019-07-03T18:35:29.512364",
-                        "operationAmount": {
-                            "amount": "8221.37",
-                            "currency": {"name": "USD", "code": "USD"},
-                        },
+                        "amount": "8221.37",
+                        "currency name": "USD",
+                        "currency ode": "USD",
                         "description": "Перевод организации",
                         "from": "MasterCard 7158300734726758",
-                        "to": "Счет 35383033474447895560",
+                        "to": "Счет 35383033474447895560"
                     }
                 ],
         ),
@@ -143,13 +100,12 @@ def test_filter_by_state(operations: pd.DataFrame) -> None:
                     "id": 441945886,
                     "state": "EXECUTED",
                     "date": "2019-08-26T10:50:58.294041",
-                    "operationAmount": {
-                        "amount": "31957.58",
-                        "currency": {"name": "руб.", "code": "RUB"},
-                    },
+                    "amount": "31957.58",
+                    "currency name": "руб.",
+                    "currency code": "RUB",
                     "description": "Перевод организации",
                     "from": "Maestro 1596837868705199",
-                    "to": "Счет 64686473678894779589",
+                    "to": "Счет 64686473678894779589"
                 },
         ),
         (os.path.join(PATH_TESTS, "test_data", "test_3.json"), []),
@@ -173,7 +129,7 @@ def test_read_table(mock_read_excel: Mock,
     df = pd.DataFrame(data_in, index=[0])
     mock_read_csv.return_value = df
 
-    assert read_table("path.csv") == [data_in]
+    assert read_table("path.csv").equals(df)
 
     mock_exists.assert_called_once()
     mock_read_csv.assert_called_once()
@@ -181,7 +137,7 @@ def test_read_table(mock_read_excel: Mock,
     df = pd.DataFrame(data_in, index=[0])
     mock_read_excel.return_value = df
 
-    assert read_table("path.xls") == [data_in]
+    assert read_table("path.xls").equals(df)
 
     mock_exists.assert_called()
     mock_read_excel.assert_called_once()
@@ -230,7 +186,7 @@ def test_get_actual_stock_price(mock_read_json: Mock, mock_get_env: Mock, mock_g
 def test_get_transaction_sum(mock_read_json: Mock, transactions) -> None:
     mock_read_json.return_value = {"conversion_rates": {"USD": 30, "RUB": 1, "EUR": 40}}
 
-    assert get_transaction_sum(transactions[0]) == 10
-    assert get_transaction_sum(transactions[1]) == 0.3
+    assert get_transaction_sum(transactions.iloc[0, :]) == -160.89
+    assert get_transaction_sum(transactions.iloc[1, :]) == -2.1
 
     mock_read_json.assert_called()

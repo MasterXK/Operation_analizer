@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import datetime as dt
 from datetime import datetime
 
 import pandas as pd
@@ -8,6 +9,7 @@ import requests
 from dotenv import load_dotenv
 from typing import Iterable
 from data import PATH_DATA
+import numpy as np
 
 load_dotenv()
 
@@ -45,7 +47,12 @@ def filter_by_date(
     :param date: дата(даты)
     :return: отфильтрованный список
     """
-    if not type(date) is datetime and isinstance(date, Iterable):
+    if transactions["Дата операции"].dtype == '<M8[ns]':
+        dates = transactions["Дата операции"]
+    else:
+        dates = pd.to_datetime(transactions["Дата операции"])
+
+    if not type(date) is str and isinstance(date, Iterable):
         date_iter = iter(date)
         start_date = next(date_iter)
         end_date = next(date_iter)
@@ -57,21 +64,22 @@ def filter_by_date(
         if type(end_date) is datetime:
             end_date = datetime.strftime(end_date, date_format)
 
-        result = transactions.loc[
-            (start_date <= transactions["Дата операции"]) & (transactions["Дата операции"] <= end_date)
-        ]
+        result = transactions[(dates >= start_date) & (dates <= end_date)]
 
         return result
 
     elif type(date) is str:
-        result = transactions.loc[transactions["Дата операции"] == date]
+        dates = dates.dt.date
+        date = datetime.strptime(date, date_format[:8]).date()
+        result = transactions[dates == date]
 
         return result
 
     elif type(date) is datetime:
-        date = datetime.strftime(date, date_format)
+        dates = dates.dt.date
+        date = datetime.strptime(date, date_format[:8]).date()
 
-        result = transactions.loc[transactions["Дата операции"] == date]
+        result = transactions.loc[dates == date]
 
         return result
 
@@ -101,9 +109,7 @@ def read_json(json_path: str | os.PathLike) -> pd.DataFrame | list:
         logging.error(f"Ошибка: {e}")
         return []
 
-    result = pd.DataFrame(json_content)
-
-    return result
+    return json_content
 
 
 def read_table(file_path: str | os.PathLike) -> pd.DataFrame | None:
@@ -124,11 +130,13 @@ def read_table(file_path: str | os.PathLike) -> pd.DataFrame | None:
                            sep=";",
                            parse_dates=["Дата операции"],
                            date_format="%d.%m.%Y %H:%M:%S",
-                           ).replace({pd.NA: None})
+                           ).replace({np.nan: None})
 
     elif ext in [".xls", ".xlsx"]:
-        data = pd.read_excel(file_path, parse_dates=["Дата операции"], date_format="%d.%m.%Y %H:%M:%S").replace(
-            {pd.NA: None})
+        data = pd.read_excel(file_path,
+                             parse_dates=["Дата операции"],
+                             date_format="%d.%m.%Y %H:%M:%S"
+                             ).replace({np.nan: None})
 
     else:
         logging.error("Неизвестное расширение файла")

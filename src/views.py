@@ -118,9 +118,10 @@ def get_user_portfolio() -> dict:
     return {"user_currencies": user_currencies, "user_stocks": user_stocks}
 
 
-def make_response(date: str | datetime) -> dict[str, str | list[dict]]:
+def make_response(date: str | datetime, transactions: pd.DataFrame) -> dict[str, str | list[dict]]:
     """
     Функция формирует json-ответ для главной страницы на момент date-даты
+    :param transactions: транзакции
     :param date: дата
     :return: словарь и запись в файл result.json
     """
@@ -130,9 +131,8 @@ def make_response(date: str | datetime) -> dict[str, str | list[dict]]:
     end_date = date
     start_date = datetime(end_date.year, end_date.month, 1, 0, 0, 0)
 
-    data = ut.read_table(os.path.join(PATH_DATA, "operations.xls"))
     filtered_transactions = ut.filter_by_date(
-        data, date=[start_date, end_date], date_format="%d.%m.%Y %H:%M:%S"
+        transactions, date=[start_date, end_date], date_format="%d.%m.%Y %H:%M:%S"
     )
 
     greeting = greetings()
