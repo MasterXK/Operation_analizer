@@ -1,4 +1,4 @@
-import utils as ut
+import src.utils as ut
 import pandas as pd
 import json
 import logging
@@ -6,7 +6,7 @@ import os
 from functools import wraps
 from typing import Callable, Optional
 from data import PATH_DATA
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def report(file_name: str = 'report.json') -> Callable:
@@ -28,17 +28,18 @@ def report(file_name: str = 'report.json') -> Callable:
 @report()
 def spending_by_category(transactions: pd.DataFrame,
                          category: str,
-                         date: Optional[str] = datetime.now()) -> pd.DataFrame:
-    if type(date) is str:
+                         date: Optional[str] = None) -> pd.DataFrame | list[str]:
+    if date:
         end_date = datetime.strptime(date, "%d.%m.%Y %H:%M:%S")
+
     else:
-        end_date = date
+        end_date = datetime.now()
 
     if end_date.month <= 3:
         start_date = datetime(year=end_date.year - 1, month=12 - 3 + end_date.month, day=end_date.day)
 
     else:
-        start_date = datetime(year=end_date.year, month=end_date.month - 3, day=end_date.day)
+        start_date = datetime(year=end_date.year, month=end_date.month - 2, day=1) - timedelta(days=1)
 
     filtered_transactions = ut.filter_by_date(transactions, date=[start_date, end_date])
 
@@ -49,6 +50,10 @@ def spending_by_category(transactions: pd.DataFrame,
         lambda x: ut.get_transaction_sum(x) if x.iloc[1] != 'RUB' else x.iloc[0], axis=1)
 
     category_expenses = expense_data[expense_data["Категория"] == category]
+
+    if category_expenses.empty:
+        return ["Такой категории нет"]
+
     category_expenses["Дата операции"] = category_expenses["Дата операции"].astype(str)
 
     return category_expenses.to_dict("records")

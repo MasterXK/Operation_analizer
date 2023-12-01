@@ -20,6 +20,10 @@ def test_get_top_transactions(transactions) -> None:
                                                    'category': 'Переводы',
                                                    'date': '2021-12-30 22:22:03',
                                                    'description': 'Константин Л.'},
+                                                  {'amount': 5688.9,
+                                                   'category': 'Супермаркеты',
+                                                   'date': '2021-12-31 16:42:04',
+                                                   'description': 'Колхоз'},
                                                   {'amount': 800.0,
                                                    'category': 'Переводы',
                                                    'date': '2021-12-31 00:12:53',
@@ -31,14 +35,10 @@ def test_get_top_transactions(transactions) -> None:
                                                   {'amount': 160.89,
                                                    'category': 'Супермаркеты',
                                                    'date': '2021-12-31 16:44:00',
-                                                   'description': 'Колхоз'},
-                                                  {'amount': 118.12,
-                                                   'category': 'Супермаркеты',
-                                                   'date': '2021-12-31 16:39:04',
-                                                   'description': 'Магнит'}]
+                                                   'description': 'Колхоз'}]
 
 
 def test_get_cards_stat(transactions) -> None:
-    assert get_cards_stat(transactions) == [{'cashback': 5.0, 'last_digits': '*5091', 'total_spent': -571.07},
-                                            {'cashback': 7.0, 'last_digits': '*7197', 'total_spent': -422.38},
-                                            {'cashback': 0.0, 'last_digits': 'Без номера', 'total_spent': -20800.0}]
+    assert get_cards_stat(transactions) == [{'cashback': 5, 'last_digits': '*5091', 'total_spent': -571.07},
+                                            {'cashback': 7, 'last_digits': '*7197', 'total_spent': -6047.28},
+                                            {'cashback': 0, 'last_digits': 'Без номера', 'total_spent': -20800.0}]
