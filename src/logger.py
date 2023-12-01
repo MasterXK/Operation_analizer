@@ -4,7 +4,6 @@ from logging import Logger
 
 from data import PATH_DATA
 
-
 FORMAT = "%(asctime)s %(filename)s %(levelname)s: %(message)s"
 LOG_PATH = os.path.join(PATH_DATA, "logs.log")
 
@@ -25,20 +24,15 @@ def get_file_handler():
     return file_handler
 
 
-def setup_logger(name: str = __name__,
-                 fh_level: str | int = 1,
-                 ch_level: str | int = 3,
-                 log_level: str | int = 3) -> Logger:
+def setup_logger(name: str = __name__, log_level: str | int = 30) -> Logger:
     """
     Функция создает экземпляр Logger
     :param log_level: уровень логирования для логера
-    :param ch_level: уровень логирования для консоли
-    :param fh_level: уровень логирования для файла
     :param name: имя логера
     :return: Logger
     """
-    file_handler = get_file_handler(fh_level)
-    console_handler = get_console_handler(ch_level)
+    file_handler = get_file_handler()
+    console_handler = get_console_handler()
 
     logger = logging.getLogger(name)
     logger.addHandler(file_handler)

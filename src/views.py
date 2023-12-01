@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 from datetime import datetime
 
@@ -42,13 +41,16 @@ def get_cards_stat(transactions: pd.DataFrame) -> list:
     """
     filtered_transactions = ut.filter_by_state(transactions)
 
-    filtered_transactions.loc[:, "Номер карты"] = filtered_transactions.loc[:, "Номер карты"].apply(lambda x: 'Без номера' if x is None else x)
+    filtered_transactions.loc[:, "Номер карты"] = filtered_transactions.loc[
+        :, "Номер карты"
+    ].apply(lambda x: "Без номера" if x is None else x)
 
     expense_data = filtered_transactions[filtered_transactions["Сумма операции"] < 0]
 
     sum_and_cur = expense_data.loc[:, ["Сумма операции", "Валюта операции"]]
     expense_data.loc[:, "Сумма операции"] = sum_and_cur.apply(
-        lambda x: ut.get_transaction_sum(x) if x.iloc[1] != 'RUB' else x.iloc[0], axis=1)
+        lambda x: ut.get_transaction_sum(x) if x.iloc[1] != "RUB" else x.iloc[0], axis=1
+    )
 
     card_grouped = expense_data.groupby("Номер карты")
     card_stat = card_grouped[["Сумма операции", "Бонусы (включая кэшбэк)"]].sum()
@@ -56,8 +58,8 @@ def get_cards_stat(transactions: pd.DataFrame) -> list:
     return [
         {
             "last_digits": number,
-            "total_spent": stat["Сумма операции"],
-            "cashback": stat["Бонусы (включая кэшбэк)"],
+            "total_spent": round(stat["Сумма операции"], 2),
+            "cashback": round(stat["Бонусы (включая кэшбэк)"], 2),
         }
         for number, stat in card_stat.iterrows()
     ]
@@ -74,13 +76,18 @@ def get_top_transactions(transactions: pd.DataFrame) -> list:
     """
     filtered_transactions = ut.filter_by_state(transactions)
 
-    expense_data = filtered_transactions[filtered_transactions["Сумма операции"] < 0]
+    expense_data = filtered_transactions.loc[
+        (filtered_transactions["Сумма операции"] < 0), :
+    ]
 
     sum_and_cur = expense_data.loc[:, ["Сумма операции", "Валюта операции"]]
     expense_data["Сумма операции"] = sum_and_cur.apply(
-        lambda x: ut.get_transaction_sum(x) if x.iloc[1] != 'RUB' else x.iloc[0], axis=1)
+        lambda x: ut.get_transaction_sum(x) if x.iloc[1] != "RUB" else x.iloc[0], axis=1
+    )
 
-    expense_data["Сумма операции"] = expense_data.loc[:, "Сумма операции"].apply(lambda x: abs(x))
+    expense_data["Сумма операции"] = expense_data["Сумма операции"].apply(
+        lambda x: abs(x)
+    )
 
     sort_by_sum = expense_data.sort_values(by="Сумма операции", ascending=False)
     sort_by_sum["Дата операции"] = sort_by_sum.loc[:, "Дата операции"].astype(str)
@@ -118,7 +125,9 @@ def get_user_portfolio() -> dict:
     return {"user_currencies": user_currencies, "user_stocks": user_stocks}
 
 
-def make_response(date: str | datetime, transactions: pd.DataFrame) -> dict[str, str | list[dict]]:
+def make_response(
+    date: str | datetime, transactions: pd.DataFrame
+) -> dict[str, str | list[dict]]:
     """
     Функция формирует json-ответ для главной страницы на момент date-даты
     :param transactions: транзакции
@@ -128,7 +137,7 @@ def make_response(date: str | datetime, transactions: pd.DataFrame) -> dict[str,
     if type(date) is str:
         date = datetime.strptime(date, "%d.%m.%Y %H:%M:%S")
 
-    end_date = date
+    end_date: datetime = date
     start_date = datetime(end_date.year, end_date.month, 1, 0, 0, 0)
 
     filtered_transactions = ut.filter_by_date(

@@ -1,44 +1,60 @@
-import pytest
-from unittest.mock import patch, Mock
-from src.views import get_top_transactions, get_cards_stat
-import pandas as pd
 import os
+from unittest.mock import Mock, patch
+
+import pandas as pd
+import pytest
+
+from src.views import get_cards_stat, get_top_transactions
 from tests import PATH_TESTS
 
 
 @pytest.fixture
 def transactions() -> pd.DataFrame:
-    df = pd.read_excel(os.path.join(PATH_TESTS, "test_data", "test_transactions.xls"),
-                       parse_dates=["Дата операции"],
-                       date_format="%d.%m.%Y %H:%M:%S"
-                       ).replace({pd.NA: None})
+    df = pd.read_excel(
+        os.path.join(PATH_TESTS, "test_data", "test_operations.xls"),
+        parse_dates=["Дата операции"],
+        date_format="%d.%m.%Y %H:%M:%S",
+    ).replace({pd.NA: None})
     return df
 
 
 def test_get_top_transactions(transactions) -> None:
-    assert get_top_transactions(transactions) == [{'amount': 20000.0,
-                                                   'category': 'Переводы',
-                                                   'date': '2021-12-30 22:22:03',
-                                                   'description': 'Константин Л.'},
-                                                  {'amount': 5688.9,
-                                                   'category': 'Супермаркеты',
-                                                   'date': '2021-12-31 16:42:04',
-                                                   'description': 'Колхоз'},
-                                                  {'amount': 800.0,
-                                                   'category': 'Переводы',
-                                                   'date': '2021-12-31 00:12:53',
-                                                   'description': 'Константин Л.'},
-                                                  {'amount': 564.0,
-                                                   'category': 'Различные товары',
-                                                   'date': '2021-12-31 01:23:42',
-                                                   'description': 'Ozon.ru'},
-                                                  {'amount': 160.89,
-                                                   'category': 'Супермаркеты',
-                                                   'date': '2021-12-31 16:44:00',
-                                                   'description': 'Колхоз'}]
+    assert get_top_transactions(transactions) == [
+        {
+            "amount": 1468.0,
+            "category": "Дом и ремонт",
+            "date": "2021-10-28 15:56:36",
+            "description": "Леруа Мерлен",
+        },
+        {
+            "amount": 350.0,
+            "category": "Развлечения",
+            "date": "2021-11-24 13:00:32",
+            "description": "Biletnaya Kassa 1",
+        },
+        {
+            "amount": 300.0,
+            "category": "Местный транспорт",
+            "date": "2021-08-29 22:04:10",
+            "description": "Метро Санкт-Петербург",
+        },
+        {
+            "amount": 195.84,
+            "category": "Каршеринг",
+            "date": "2021-10-18 17:01:04",
+            "description": "Ситидрайв",
+        },
+        {
+            "amount": 160.89,
+            "category": "Супермаркеты",
+            "date": "2021-12-31 16:44:00",
+            "description": "Колхоз",
+        },
+    ]
 
 
 def test_get_cards_stat(transactions) -> None:
-    assert get_cards_stat(transactions) == [{'cashback': 5, 'last_digits': '*5091', 'total_spent': -571.07},
-                                            {'cashback': 7, 'last_digits': '*7197', 'total_spent': -6047.28},
-                                            {'cashback': 0, 'last_digits': 'Без номера', 'total_spent': -20800.0}]
+    assert get_cards_stat(transactions) == [
+        {"cashback": 3.0, "last_digits": "*4556", "total_spent": -360.0},
+        {"cashback": 45.0, "last_digits": "*7197", "total_spent": -2378.73},
+    ]

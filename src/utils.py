@@ -1,29 +1,24 @@
 import json
-import logging
 import os
-import datetime as dt
 from datetime import datetime
+from typing import Iterable
 
+import numpy as np
 import pandas as pd
 import requests
 from dotenv import load_dotenv
-from typing import Iterable
+
 from data import PATH_DATA
-import numpy as np
+from src.logger import setup_logger
 
 load_dotenv()
 
-logging.basicConfig(
-    filename=os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "data", "logs.log"
-    ),
-    filemode="w",
-    format="%(asctime)s %(filename)s %(levelname)s: %(message)s",
-    level=2,
-)
+logger = setup_logger()
 
 
-def filter_by_state(transactions: pd.DataFrame, state: str = "OK") -> pd.DataFrame:
+def filter_by_state(
+    transactions: pd.DataFrame, state: str = "OK"
+) -> pd.DataFrame | pd.Series:
     """
     Функция фильтрует список операций по статусу
     :param transactions: список операций
@@ -34,9 +29,9 @@ def filter_by_state(transactions: pd.DataFrame, state: str = "OK") -> pd.DataFra
 
 
 def filter_by_date(
-        transactions: pd.DataFrame,
-        date_format: str = "%d.%m.%Y %H:%M:%S",
-        date: str | datetime | Iterable = datetime.now().date(),
+    transactions: pd.DataFrame,
+    date_format: str = "%d.%m.%Y %H:%M:%S",
+    date: str | datetime | Iterable = datetime.now(),
 ) -> pd.DataFrame:
     """
     Функция фильтрует список транзакций по дате.
@@ -47,7 +42,7 @@ def filter_by_date(
     :param date: дата(даты)
     :return: отфильтрованный список
     """
-    if transactions["Дата операции"].dtype == '<M8[ns]':
+    if transactions["Дата операции"].dtype == "<M8[ns]":
         dates = transactions["Дата операции"]
     else:
         dates = pd.to_datetime(transactions["Дата операции"])
@@ -57,40 +52,62 @@ def filter_by_date(
         start_date = next(date_iter)
         end_date = next(date_iter)
 
-        if type(start_date) is datetime:
-            start_date.replace(hour=0, minute=0, second=0, microsecond=0)
-            start_date = datetime.strftime(start_date, date_format)
+        if type(start_date) is str:
+            try:
+                start_date = datetime.strptime(start_date, date_format)
+            except TypeError as e:
+                logger.error(
+                    f'Неверный формат даты. Нужно указать даты в формате: "%d%%%m%%%Y %H%%%M%%%S". {e}',
+                    exc_info=True,
+                )
+                raise e
 
-        if type(end_date) is datetime:
-            end_date = datetime.strftime(end_date, date_format)
+        if type(end_date) is str:
+            try:
+                start_date = datetime.strptime(start_date, date_format)
+            except TypeError as e:
+                logger.error(
+                    f'Неверный формат даты. Нужно указать даты в формате: "%d%%%m%%%Y %H%%%M%%%S". {e}',
+                    exc_info=True,
+                )
+                raise e
 
-        result = transactions[(dates >= start_date) & (dates <= end_date)]
+        result = transactions.loc[(dates >= start_date) & (dates <= end_date), :]
 
         return result
 
     elif type(date) is str:
         dates = dates.dt.date
-        date = datetime.strptime(date, date_format[:8]).date()
-        result = transactions[dates == date]
+        try:
+            date = datetime.strptime(date, date_format[:8])
+        except TypeError as e:
+            logger.error(
+                f'Неверный формат даты. Нужно указать дату в формате: "%d%%%m%%%Y". {e}',
+                exc_info=True,
+            )
+            raise e
+
+        result = transactions[dates == date.date()]
 
         return result
 
     elif type(date) is datetime:
         dates = dates.dt.date
-        date = datetime.strptime(date, date_format[:8]).date()
 
-        result = transactions.loc[dates == date]
+        result = transactions.loc[dates == date.date()]
 
         return result
 
     else:
-        logging.error(
+        logger.error(
             "Ошибка: неверный тип date. Требуется str или datetime, либо Iterable[str | datetime]"
         )
-        raise TypeError("Неверный тип date. Требуется str или datetime, либо Iterable[str | datetime]")
+        raise TypeError(
+            "Неверный тип date. Требуется str или datetime, либо Iterable[str | datetime]"
+        )
 
 
-def read_json(json_path: str | os.PathLike) -> pd.DataFrame | list:
+def read_json(json_path: str | os.PathLike) -> list | dict:
     """
     Функция считывает содержимое json-файла
     :param json_path: абсолютный путь до json-а
@@ -99,14 +116,14 @@ def read_json(json_path: str | os.PathLike) -> pd.DataFrame | list:
     try:
         with open(json_path, encoding="UTF-8") as json_file:
             json_content = json.load(json_file)
-        logging.debug("Получены данные")
+        logger.debug("Получены данные")
 
     except json.JSONDecodeError as e:
-        logging.error(f"Ошибка: {e}")
+        logger.error(f"Ошибка: {e}")
         return []
 
     except FileNotFoundError as e:
-        logging.error(f"Ошибка: {e}")
+        logger.error(f"Ошибка: {e}")
         return []
 
     return json_content
@@ -119,27 +136,29 @@ def read_table(file_path: str | os.PathLike) -> pd.DataFrame | None:
     :return: объект Python
     """
     if not os.path.exists(file_path):
-        logging.error("Файл не найден")
+        logger.error("Файл не найден")
         return None
 
     _, ext = os.path.splitext(file_path)
 
     if ext == ".csv":
-        data = pd.read_csv(file_path,
-                           encoding="UTF-8",
-                           sep=";",
-                           parse_dates=["Дата операции"],
-                           date_format="%d.%m.%Y %H:%M:%S",
-                           ).replace({np.nan: None})
+        data = pd.read_csv(
+            file_path,
+            encoding="UTF-8",
+            sep=";",
+            parse_dates=["Дата операции"],
+            date_format="%d.%m.%Y %H:%M:%S",
+        ).replace({np.nan: None})
 
     elif ext in [".xls", ".xlsx"]:
-        data = pd.read_excel(file_path,
-                             parse_dates=["Дата операции"],
-                             date_format="%d.%m.%Y %H:%M:%S"
-                             ).replace({np.nan: None})
+        data = pd.read_excel(
+            file_path,
+            parse_dates=["Дата операции"],
+            date_format="%d.%m.%Y %H:%M:%S",
+        ).replace({np.nan: None})
 
     else:
-        logging.error("Неизвестное расширение файла")
+        logger.error("Неизвестное расширение файла")
         raise TypeError("Неизвестное расширение файла")
 
     return data
@@ -155,20 +174,20 @@ def get_actual_rates() -> None:
     try:
         response = requests.get(f"https://v6.exchangerate-api.com/v6/{key}/latest/RUB")
         rates_data = response.json()
-        logging.debug("Данные по курсам получены.")
+        logger.debug("Данные по курсам получены.")
 
     except requests.exceptions.RequestException as e:
-        logging.error(f"Не удалось получить данные: {e}", exc_info=True)
+        logger.error(f"Не удалось получить данные: {e}", exc_info=True)
         return None
 
     with open(os.path.join(PATH_DATA, "currency_rates.json"), "w") as rates:
         json.dump(rates_data, rates)
-        logging.debug(f"Данные записаны: {rates.name, rates.mode, rates.encoding}")
+        logger.debug(f"Данные записаны: {rates.name, rates.mode, rates.encoding}")
 
     return None
 
 
-def get_actual_stock_price(symbol: str) -> None:
+def get_actual_stock_price(symbol: str) -> None | str | float:
     """
     Функция получает актуальную цену акции. Сервис доступен на 25 обращений в сутки
     :param symbol: код акции
@@ -182,12 +201,12 @@ def get_actual_stock_price(symbol: str) -> None:
         )
 
     except requests.exceptions.RequestException as e:
-        logging.error(f"Не удалось получить данные: {e}", exc_info=True)
+        logger.error(f"Не удалось получить данные: {e}", exc_info=True)
         return None
 
     else:
         stock_data = response.json()
-        logging.debug(f"Данные акций {symbol} получены")
+        logger.debug(f"Данные акций {symbol} получены")
 
     try:
         rates = read_json(os.path.join(PATH_DATA, "currency_rates.json"))
@@ -197,11 +216,11 @@ def get_actual_stock_price(symbol: str) -> None:
         result = "Сервис недоступен"
 
     except FileNotFoundError as e:
-        logging.error(f"Нет данных по курсам валют. {e}", exc_info=True)
+        logger.error(f"Нет данных по курсам валют. {e}", exc_info=True)
         raise e
 
     else:
-        result = round(stock_price / rates["conversion_rates"]["USD"], 1)
+        result = round(stock_price / float(rates["conversion_rates"]["USD"]), 2)
 
     return result
 
@@ -215,19 +234,20 @@ def get_transaction_sum(transaction: pd.Series) -> float | None:
     currency = transaction["Валюта операции"]
 
     try:
-        rates: dict = read_json(os.path.join(PATH_DATA, "currency_rates.json"))
+        rates = read_json(os.path.join(PATH_DATA, "currency_rates.json"))
 
     except FileNotFoundError as e:
-        logging.error(f"Нет данных по курсам валют. {e}", exc_info=True)
+        logger.error(f"Нет данных по курсам валют. {e}", exc_info=True)
         raise e
 
     if currency == "RUB":
-        logging.debug("Транзакция в рублях, вывожу сумму...")
+        logger.debug("Транзакция в рублях, вывожу сумму...")
         return float(transaction["Сумма операции"])
 
     else:
-        logging.debug(f"Транзакция в валюте {currency}, запрашиваю курс к рублю...")
+        logger.debug(f"Транзакция в валюте {currency}, запрашиваю курс к рублю...")
         return round(
-            float(transaction["Сумма операции"]) / float(rates["conversion_rates"][currency]),
-            1,
+            float(transaction["Сумма операции"])
+            / float(rates["conversion_rates"][currency]),
+            2,
         )

@@ -1,24 +1,34 @@
-import src.utils as ut
-import pandas as pd
 import json
-import logging
 import os
+from datetime import datetime, timedelta
 from functools import wraps
 from typing import Callable, Optional
+
+import pandas as pd
+
+import src.utils as ut
 from data import PATH_DATA
-from datetime import datetime, timedelta
 
 
-def report(file_name: str = 'report.json') -> Callable:
+def report(file_name: str = "report.json") -> Callable:
     def wrapper(func: Callable) -> Callable:
         @wraps(func)
         def inner(*args, **kwargs):
             result = func(*args, **kwargs)
+            output = result.copy()
 
-            with open(os.path.join(PATH_DATA, func.__name__ + file_name), "w", encoding="UTF-8") as f:
+            if type(result) is pd.DataFrame:
+                result["Дата операции"] = result["Дата операции"].astype(str)
+                result = result.to_dict("records")
+
+            with open(
+                os.path.join(PATH_DATA, func.__name__ + file_name),
+                "w",
+                encoding="UTF-8",
+            ) as f:
                 json.dump(result, f, ensure_ascii=False)
 
-            return result
+            return output
 
         return inner
 
@@ -26,9 +36,9 @@ def report(file_name: str = 'report.json') -> Callable:
 
 
 @report()
-def spending_by_category(transactions: pd.DataFrame,
-                         category: str,
-                         date: Optional[str] = None) -> pd.DataFrame | list[str]:
+def spending_by_category(
+    transactions: pd.DataFrame, category: str, date: Optional[str] = None
+) -> pd.DataFrame | list[str]:
     if date:
         end_date = datetime.strptime(date, "%d.%m.%Y %H:%M:%S")
 
@@ -36,10 +46,14 @@ def spending_by_category(transactions: pd.DataFrame,
         end_date = datetime.now()
 
     if end_date.month <= 3:
-        start_date = datetime(year=end_date.year - 1, month=12 - 3 + end_date.month, day=end_date.day)
+        start_date = datetime(
+            year=end_date.year - 1, month=12 - 3 + end_date.month, day=end_date.day
+        )
 
     else:
-        start_date = datetime(year=end_date.year, month=end_date.month - 2, day=1) - timedelta(days=1)
+        start_date = datetime(
+            year=end_date.year, month=end_date.month - 2, day=1
+        ) - timedelta(days=1)
 
     filtered_transactions = ut.filter_by_date(transactions, date=[start_date, end_date])
 
@@ -47,13 +61,12 @@ def spending_by_category(transactions: pd.DataFrame,
 
     sum_and_cur = expense_data.loc[:, ["Сумма операции", "Валюта операции"]]
     expense_data.loc[:, "Сумма операции"] = sum_and_cur.apply(
-        lambda x: ut.get_transaction_sum(x) if x.iloc[1] != 'RUB' else x.iloc[0], axis=1)
+        lambda x: ut.get_transaction_sum(x) if x.iloc[1] != "RUB" else x.iloc[0], axis=1
+    )
 
-    category_expenses = expense_data[expense_data["Категория"] == category]
+    category_expenses = expense_data.loc[(expense_data["Категория"] == category), :]
 
     if category_expenses.empty:
         return ["Такой категории нет"]
 
-    category_expenses["Дата операции"] = category_expenses["Дата операции"].astype(str)
-
-    return category_expenses.to_dict("records")
+    return category_expenses
