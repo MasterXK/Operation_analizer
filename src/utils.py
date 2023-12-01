@@ -32,7 +32,7 @@ def filter_by_date(
     transactions: pd.DataFrame,
     date_format: str = "%d.%m.%Y %H:%M:%S",
     date: str | datetime | Iterable = datetime.now(),
-) -> pd.DataFrame:
+) -> pd.DataFrame | pd.Series:
     """
     Функция фильтрует список транзакций по дате.
     Если передана одна дата, то возвращает список транзакций в зту дату.

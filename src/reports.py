@@ -11,6 +11,11 @@ from data import PATH_DATA
 
 
 def report(file_name: str = "report.json") -> Callable:
+    """
+    Декоратор для записи результата работы функции в файл
+    :param file_name: имя файла, по-умолчанию 'report.json'
+    :return: результат работы декорируемой функции
+    """
     def wrapper(func: Callable) -> Callable:
         @wraps(func)
         def inner(*args, **kwargs):
@@ -39,6 +44,13 @@ def report(file_name: str = "report.json") -> Callable:
 def spending_by_category(
     transactions: pd.DataFrame, category: str, date: Optional[str] = None
 ) -> pd.DataFrame | list[str]:
+    """
+    Функция возвращает фрейм трат по категории category за последние 3 месяца
+    :param transactions: список транзакций
+    :param category: категория
+    :param date: дата для начала отсчета
+    :return: фрейм
+    """
     if date:
         end_date = datetime.strptime(date, "%d.%m.%Y %H:%M:%S")
 

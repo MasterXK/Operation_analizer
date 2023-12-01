@@ -10,6 +10,13 @@ logger = setup_logger()
 
 
 def invest_copilka(month: str, transactions: pd.DataFrame, limit: int) -> float:
+    """
+    Функция подсчитывает, сколько удалось бы отложить за указанный месяц(month)
+    :param month: месяц для обработки
+    :param transactions: список транзакций
+    :param limit: степень округления транзакции
+    :return: число
+    """
     try:
         start_date = datetime.strptime(month, "%Y-%m")
 
