@@ -10,7 +10,7 @@ import src.utils as ut
 from data import PATH_DATA
 
 
-def report(file_name: str = "report.json") -> Callable:
+def report(file_name: str = "report") -> Callable:
     """
     Декоратор для записи результата работы функции в файл
     :param file_name: имя файла, по-умолчанию 'report.json'
@@ -24,13 +24,13 @@ def report(file_name: str = "report.json") -> Callable:
 
             if type(result) is pd.DataFrame:
                 result["Дата операции"] = result["Дата операции"].astype(str)
-                result = result.to_dict("records")
 
-            with open(
-                os.path.join(PATH_DATA, func.__name__ + file_name),
-                "w",
-                encoding="UTF-8",
-            ) as f:
+                with pd.ExcelWriter(os.path.join(PATH_DATA, func.__name__ + file_name + '.xlsx')) as writer:
+                    result.to_excel(writer)
+
+                return output
+
+            with open(os.path.join(PATH_DATA, func.__name__ + file_name + '.json'), "w", encoding="UTF-8", ) as f:
                 json.dump(result, f, ensure_ascii=False)
 
             return output
@@ -71,12 +71,12 @@ def spending_by_category(
 
     expense_data = filtered_transactions[filtered_transactions["Сумма операции"] < 0]
 
-    sum_and_cur = expense_data.loc[:, ["Сумма операции", "Валюта операции"]]
+    sum_and_cur = expense_data[["Сумма операции", "Валюта операции"]]
     expense_data.loc[:, "Сумма операции"] = sum_and_cur.apply(
         lambda x: ut.get_transaction_sum(x) if x.iloc[1] != "RUB" else x.iloc[0], axis=1
     )
 
-    category_expenses = expense_data.loc[(expense_data["Категория"] == category), :]
+    category_expenses = expense_data.loc[(expense_data["Категория"] == category)]
 
     if category_expenses.empty:
         return ["Такой категории нет"]

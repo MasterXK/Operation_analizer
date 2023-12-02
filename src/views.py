@@ -47,7 +47,7 @@ def get_cards_stat(transactions: pd.DataFrame) -> list:
 
     expense_data = filtered_transactions[filtered_transactions["Сумма операции"] < 0]
 
-    sum_and_cur = expense_data.loc[:, ["Сумма операции", "Валюта операции"]]
+    sum_and_cur = expense_data[["Сумма операции", "Валюта операции"]]
     expense_data.loc[:, "Сумма операции"] = sum_and_cur.apply(
         lambda x: ut.get_transaction_sum(x) if x.iloc[1] != "RUB" else x.iloc[0], axis=1
     )
