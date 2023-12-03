@@ -1,10 +1,10 @@
 import os
 from pprint import pprint
 
-import reports as reps
-import services as svs
-import utils as ut
-import views as vw
+import src.reports as reps
+import src.services as svs
+import src.utils as ut
+import src.views as vw
 from data import PATH_DATA
 
 

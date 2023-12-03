@@ -23,7 +23,7 @@ def report(file_name: str = "report") -> Callable:
             output = result.copy()
 
             if type(result) is pd.DataFrame:
-                result["Дата операции"] = result["Дата операции"].astype(str)
+                result.to_excel()
 
                 with pd.ExcelWriter(os.path.join(PATH_DATA, func.__name__ + file_name + '.xlsx')) as writer:
                     result.to_excel(writer)

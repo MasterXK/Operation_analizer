@@ -164,12 +164,32 @@ def read_table(file_path: str | os.PathLike) -> pd.DataFrame | None:
     return data
 
 
-def fet_actual_rate(symbol: str) -> float:
+def get_actual_rate(symbol: str) -> float:
     """
 
     :param symbol:
     :return:
     """
+    try:
+        rates = read_json(os.path.join(PATH_DATA, "currency_rates.json"))
+
+    except FileNotFoundError as e:
+        logger.error(f"Нет данных по курсам валют. {e}", exc_info=True)
+
+        logger.debug("Пробую получить данные...")
+        get_actual_rates()
+
+        logger.debug("Данные получены!")
+        rates = read_json(os.path.join(PATH_DATA, "currency_rates.json"))
+
+    last_update = datetime.fromtimestamp(rates['time_last_update_unix'])
+    time_passed = datetime.now() - last_update
+
+    if time_passed.days >= 1:
+        logger.debug("Обновляю курс валют")
+        get_actual_rates()
+
+    return rates["conversion_rates"][symbol]
 
 
 def get_actual_rates() -> None:
@@ -190,7 +210,7 @@ def get_actual_rates() -> None:
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Не удалось получить данные: {e}", exc_info=True)
-        return None
+        raise e
 
     with open(os.path.join(PATH_DATA, "currency_rates.json"), "w") as rates:
         json.dump(rates_data, rates)
@@ -248,21 +268,12 @@ def get_transaction_sum(transaction: pd.Series) -> float | None:
     """
     currency = transaction["Валюта операции"]
 
-    try:
-        rates = read_json(os.path.join(PATH_DATA, "currency_rates.json"))
-
-    except FileNotFoundError as e:
-        logger.error(f"Нет данных по курсам валют. {e}", exc_info=True)
-        raise e
-
     if currency == "RUB":
         logger.debug("Транзакция в рублях, вывожу сумму...")
         return float(transaction["Сумма операции"])
 
     else:
         logger.debug(f"Транзакция в валюте {currency}, запрашиваю курс к рублю...")
-        return round(
-            float(transaction["Сумма операции"])
-            / float(rates["conversion_rates"][currency]),
-            2,
-        )
+        rate = get_actual_rate(currency)
+
+        return round(transaction["Сумма операции"] / rate, 2)

@@ -31,7 +31,7 @@ pandas-stubs = "^2.1.1.230928"
 disallow_untyped_defs = true
 no_implicit_optional = false
 warn_return_any = true
-exclude = 'venv
+exclude = 'venv'
 
 [tool.black]
 line-length = 119

@@ -1,11 +1,10 @@
 import os
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
-import src.utils as ut
 from src.reports import report, spending_by_category
 from tests import PATH_TESTS
 
