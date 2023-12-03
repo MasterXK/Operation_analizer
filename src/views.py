@@ -1,6 +1,8 @@
 import json
 import os
 from datetime import datetime
+from pandas.core.frame import DataFrame
+from pandas import Series
 
 import pandas as pd
 
@@ -74,7 +76,7 @@ def get_top_transactions(transactions: pd.DataFrame) -> list:
                                 "category": "Категория",
                                 "description": "Описание"},]
     """
-    filtered_transactions = ut.filter_by_state(transactions)
+    filtered_transactions: DataFrame | Series = ut.filter_by_state(transactions)
 
     expense_data = filtered_transactions.loc[
         (filtered_transactions["Сумма операции"] < 0), :
@@ -137,10 +139,10 @@ def make_response(
     if type(date) is str:
         date = datetime.strptime(date, "%d.%m.%Y %H:%M:%S")
 
-    end_date: datetime = date
+    end_date = date
     start_date = datetime(end_date.year, end_date.month, 1, 0, 0, 0)
 
-    filtered_transactions = ut.filter_by_date(
+    filtered_transactions: DataFrame = ut.filter_by_date(
         transactions, date=[start_date, end_date], date_format="%d.%m.%Y %H:%M:%S"
     )
 

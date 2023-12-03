@@ -8,7 +8,7 @@ FORMAT = "%(asctime)s %(filename)s %(levelname)s: %(message)s"
 LOG_PATH = os.path.join(PATH_DATA, "logs.log")
 
 
-def get_console_handler():
+def get_console_handler() -> logging.StreamHandler:
     console_handler = logging.StreamHandler()
     console_formatter = logging.Formatter(FORMAT)
     console_handler.setFormatter(console_formatter)
@@ -16,7 +16,7 @@ def get_console_handler():
     return console_handler
 
 
-def get_file_handler():
+def get_file_handler() -> logging.FileHandler:
     file_formatter = logging.Formatter(FORMAT)
     file_handler = logging.FileHandler(LOG_PATH)
     file_handler.setFormatter(file_formatter)

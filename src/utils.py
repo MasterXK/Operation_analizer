@@ -7,9 +7,12 @@ import numpy as np
 import pandas as pd
 import requests
 from dotenv import load_dotenv
+from pandas.core.frame import DataFrame
+from pandas import Series
 
 from data import PATH_DATA
 from src.logger import setup_logger
+from typing import Any
 
 load_dotenv()
 
@@ -17,8 +20,8 @@ logger = setup_logger()
 
 
 def filter_by_state(
-    transactions: pd.DataFrame, state: str = "OK"
-) -> pd.DataFrame | pd.Series:
+    transactions: DataFrame, state: str = "OK"
+) -> DataFrame | Series:
     """
     Функция фильтрует список операций по статусу
     :param transactions: список операций
@@ -29,10 +32,10 @@ def filter_by_state(
 
 
 def filter_by_date(
-    transactions: pd.DataFrame,
+    transactions: DataFrame,
     date_format: str = "%d.%m.%Y %H:%M:%S",
     date: str | datetime | Iterable = datetime.now(),
-) -> pd.DataFrame | pd.Series:
+) -> DataFrame | Series:
     """
     Функция фильтрует список транзакций по дате.
     Если передана одна дата, то возвращает список транзакций в зту дату.
@@ -44,6 +47,7 @@ def filter_by_date(
     """
     if transactions["Дата операции"].dtype == "<M8[ns]":
         dates = transactions["Дата операции"]
+
     else:
         dates = pd.to_datetime(transactions["Дата операции"])
 
@@ -55,9 +59,10 @@ def filter_by_date(
         if type(start_date) is str:
             try:
                 start_date = datetime.strptime(start_date, date_format)
+
             except TypeError as e:
                 logger.error(
-                    f'Неверный формат даты. Нужно указать даты в формате: "%d%%%m%%%Y %H%%%M%%%S". {e}',
+                    f'Неверный формат даты. Нужно указать даты в формате: "%d.%m.%Y %H:%M:%S". {e}',
                     exc_info=True,
                 )
                 raise e
@@ -65,14 +70,15 @@ def filter_by_date(
         if type(end_date) is str:
             try:
                 start_date = datetime.strptime(start_date, date_format)
+
             except TypeError as e:
                 logger.error(
-                    f'Неверный формат даты. Нужно указать даты в формате: "%d%%%m%%%Y %H%%%M%%%S". {e}',
+                    f'Неверный формат даты. Нужно указать даты в формате: "%d.%m.%Y %H:%M:%S". {e}',
                     exc_info=True,
                 )
                 raise e
 
-        result = transactions.loc[(dates >= start_date) & (dates <= end_date), :]
+        result: DataFrame | Series = transactions.loc[(dates >= start_date) & (dates <= end_date), :]
 
         return result
 
@@ -107,7 +113,7 @@ def filter_by_date(
         )
 
 
-def read_json(json_path: str | os.PathLike) -> list | dict:
+def read_json(json_path: str | os.PathLike) -> list | dict | Any:
     """
     Функция считывает содержимое json-файла
     :param json_path: абсолютный путь до json-а
@@ -129,7 +135,7 @@ def read_json(json_path: str | os.PathLike) -> list | dict:
     return json_content
 
 
-def read_table(file_path: str | os.PathLike) -> pd.DataFrame | None:
+def read_table(file_path: str | os.PathLike) -> DataFrame | Series | None:
     """
     Функция считывает данные из таблиц .csv и .xlsx(.xls)
     :param file_path: путь до файла с таблицей
@@ -142,13 +148,12 @@ def read_table(file_path: str | os.PathLike) -> pd.DataFrame | None:
     _, ext = os.path.splitext(file_path)
 
     if ext == ".csv":
-        data = pd.read_csv(
-            file_path,
-            encoding="UTF-8",
-            sep=";",
-            parse_dates=["Дата операции"],
-            date_format="%d.%m.%Y %H:%M:%S",
-        ).replace({np.nan: None})
+        data = pd.read_csv(file_path,
+                           encoding="UTF-8",
+                           sep=";",
+                           parse_dates=["Дата операции"],
+                           date_format="%d.%m.%Y %H:%M:%S",
+                           ).replace({np.nan: None})
 
     elif ext in [".xls", ".xlsx"]:
         data = pd.read_excel(
@@ -164,7 +169,7 @@ def read_table(file_path: str | os.PathLike) -> pd.DataFrame | None:
     return data
 
 
-def get_actual_rate(symbol: str) -> float:
+def get_actual_rate(symbol: str) -> float | Any:
     """
 
     :param symbol:
@@ -244,23 +249,19 @@ def get_actual_stock_price(symbol: str) -> None | str | float:
         logger.debug(f"Данные акций {symbol} получены")
 
     try:
-        rates = read_json(os.path.join(PATH_DATA, "currency_rates.json"))
         stock_price = float(stock_data["Global Quote"]["05. price"])
 
     except KeyError:
-        result = "Сервис недоступен"
-
-    except FileNotFoundError as e:
-        logger.error(f"Нет данных по курсам валют. {e}", exc_info=True)
-        raise e
+        result: str = "Сервис недоступен"
 
     else:
-        result = round(stock_price / float(rates["conversion_rates"]["USD"]), 2)
+        rate = get_actual_rate('USD')
+        result: float = round(stock_price / rate, 2)
 
     return result
 
 
-def get_transaction_sum(transaction: pd.Series) -> float | None:
+def get_transaction_sum(transaction: Series) -> float | Any:
     """
     Функция возвращает сумму транзакции в рублях
     :param transaction: транзакция

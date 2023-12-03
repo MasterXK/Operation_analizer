@@ -2,7 +2,9 @@ import json
 import os
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Callable, Optional
+from typing import Callable, Optional, Any
+from pandas.core.frame import DataFrame
+from pandas import Series
 
 import pandas as pd
 
@@ -18,12 +20,11 @@ def report(file_name: str = "report") -> Callable:
     """
     def wrapper(func: Callable) -> Callable:
         @wraps(func)
-        def inner(*args, **kwargs):
+        def inner(*args: Any, **kwargs: Any) -> Any:
             result = func(*args, **kwargs)
             output = result.copy()
 
             if type(result) is pd.DataFrame:
-                result.to_excel()
 
                 with pd.ExcelWriter(os.path.join(PATH_DATA, func.__name__ + file_name + '.xlsx')) as writer:
                     result.to_excel(writer)
@@ -41,9 +42,10 @@ def report(file_name: str = "report") -> Callable:
 
 
 @report()
-def spending_by_category(
-    transactions: pd.DataFrame, category: str, date: Optional[str] = None
-) -> pd.DataFrame | list[str]:
+def spending_by_category(transactions: DataFrame,
+                         category: str,
+                         date: Optional[str] = None
+                         ) -> DataFrame | Series | list[str]:
     """
     Функция возвращает фрейм трат по категории category за последние 3 месяца
     :param transactions: список транзакций

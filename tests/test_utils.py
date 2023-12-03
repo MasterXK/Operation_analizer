@@ -1,6 +1,7 @@
 import os
 from unittest.mock import Mock, patch
-
+from pandas.core.frame import DataFrame
+from pandas import Series
 import pandas as pd
 import pytest
 import time
@@ -20,7 +21,7 @@ from tests import PATH_TESTS
 
 
 @pytest.fixture
-def transactions() -> pd.DataFrame:
+def transactions() -> DataFrame:
     df = pd.read_excel(
         os.path.join(PATH_TESTS, "test_data", "test_operations.xls"),
         parse_dates=["Дата операции"],
@@ -59,14 +60,14 @@ def operations() -> list[dict[str, str | int]]:
     ]
 
 
-def test_filter_by_date(date_format, transactions) -> None:
+def test_filter_by_date(date_format: str, transactions: DataFrame) -> None:
     expected_result = transactions.iloc[0:1, :]
     assert filter_by_date(
         transactions, date="31.12.2021", date_format=date_format
     ).equals(expected_result)
 
 
-def test_filter_by_date_err(date_format, transactions) -> None:
+def test_filter_by_date_err(date_format: str, transactions: DataFrame) -> None:
     with pytest.raises(ValueError):
         filter_by_date(transactions, date="15-09-2021", date_format=date_format)
 
@@ -74,7 +75,7 @@ def test_filter_by_date_err(date_format, transactions) -> None:
         filter_by_date(transactions, date=17.09, date_format=date_format)
 
 
-def test_filter_by_state(operations: pd.DataFrame) -> None:
+def test_filter_by_state(operations: DataFrame) -> None:
     df = pd.DataFrame(operations)
     assert filter_by_state(df).equals(df.iloc[:2, :])
     assert filter_by_state(df, state="FAILED").equals(df.iloc[2:, :])
@@ -84,34 +85,34 @@ def test_filter_by_state(operations: pd.DataFrame) -> None:
     "json_path, expected_result",
     [
         (
-                os.path.join(PATH_TESTS, "test_data", "test_1.json"),
-                [
-                    {
-                        "id": 41428829,
-                        "state": "EXECUTED",
-                        "date": "2019-07-03T18:35:29.512364",
-                        "amount": "8221.37",
-                        "currency name": "USD",
-                        "currency ode": "USD",
-                        "description": "Перевод организации",
-                        "from": "MasterCard 7158300734726758",
-                        "to": "Счет 35383033474447895560",
-                    }
-                ],
+            os.path.join(PATH_TESTS, "test_data", "test_1.json"),
+            [
+                {
+                    "id": 41428829,
+                    "state": "EXECUTED",
+                    "date": "2019-07-03T18:35:29.512364",
+                    "amount": "8221.37",
+                    "currency name": "USD",
+                    "currency ode": "USD",
+                    "description": "Перевод организации",
+                    "from": "MasterCard 7158300734726758",
+                    "to": "Счет 35383033474447895560",
+                }
+            ],
         ),
         (
-                os.path.join(PATH_TESTS, "test_data", "test_2.json"),
-                {
-                    "id": 441945886,
-                    "state": "EXECUTED",
-                    "date": "2019-08-26T10:50:58.294041",
-                    "amount": "31957.58",
-                    "currency name": "руб.",
-                    "currency code": "RUB",
-                    "description": "Перевод организации",
-                    "from": "Maestro 1596837868705199",
-                    "to": "Счет 64686473678894779589",
-                },
+            os.path.join(PATH_TESTS, "test_data", "test_2.json"),
+            {
+                "id": 441945886,
+                "state": "EXECUTED",
+                "date": "2019-08-26T10:50:58.294041",
+                "amount": "31957.58",
+                "currency name": "руб.",
+                "currency code": "RUB",
+                "description": "Перевод организации",
+                "from": "Maestro 1596837868705199",
+                "to": "Счет 64686473678894779589",
+            },
         ),
         (os.path.join(PATH_TESTS, "test_data", "test_3.json"), []),
         (os.path.join(PATH_TESTS, "test_data", "test_4.json"), []),
