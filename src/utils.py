@@ -164,12 +164,24 @@ def read_table(file_path: str | os.PathLike) -> pd.DataFrame | None:
     return data
 
 
+def fet_actual_rate(symbol: str) -> float:
+    """
+
+    :param symbol:
+    :return:
+    """
+
+
 def get_actual_rates() -> None:
     """
     Функция запрашивает актуальные курсы валют и сохраняет их в json-файл
     :return: None
     """
     key = os.getenv("API_EXC")
+
+    if not key:
+        logger.error('Ошибка: нет апи-ключа для курсов валют!')
+        raise ValueError('Ошибка: нет апи-ключа для курсов валют!')
 
     try:
         response = requests.get(f"https://v6.exchangerate-api.com/v6/{key}/latest/RUB")
@@ -194,6 +206,9 @@ def get_actual_stock_price(symbol: str) -> None | str | float:
     :return: цена акции
     """
     key = os.getenv("API_AVS")
+    if not key:
+        logger.error('Ошибка: нет апи-ключа для акций!')
+        raise ValueError('Ошибка: нет апи-ключа для акций!')
 
     try:
         response = requests.get(
